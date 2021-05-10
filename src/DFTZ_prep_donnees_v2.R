@@ -67,28 +67,6 @@ DFTZ$DNAF <- ifelse(DFTZ$NAF=="C"|DFTZ$NAF=="F"|DFTZ$NAF=="G"|DFTZ$NAF=="H"|DFTZ
 DFTZ <- DFTZ[which(DFTZ$DNAF==1 & DFTZ$DOMTOM==0),]
 DFTZ2 <- DFTZ
 ####### Fusion réforme
-#carte post reforme
-#map_greffe <- readOGR("greffes_cd_com.geojson", "OGRGeoJSON")
-#map_greffe$I_CD_POST_SIEGE <- map_greffe$code_commune
-#map_greffe$TC <- map_greffe$greffe
-#map_greffe <- map_greffe@data[,c("I_CD_POST_SIEGE","TC")]
-#map_greffe$I_CD_POST_SIEGE <- paste("A",map_greffe$I_CD_POST_SIEGE, sep="")
-#write.table(map_greffe, file = "map_greffe.csv", row.names = FALSE, sep=";", dec=",")
-#map_greffe <- unique(map_greffe)
-#map_greffe <- read.csv2("map_greffe.csv", sep = ";", dec =",")
-#map_greffe$I_CD_POST_SIEGE <- as.factor(substr(as.character(map_greffe$I_CD_POST_SIEGE),2,6)) #encore des code communes sans TC
-#map_greffe$CDCOM_TC <- as.factor(substr(as.character(map_greffe$CDCOM_TC),2,6)) #encore des code communes sans TC
-#DFTZ <- merge(DFTZ, map_greffe,all.x=TRUE, by=c("I_CD_POST_SIEGE"))
-#DFTZ <- DFTZ[is.na(DFTZ$num_TC2009)==FALSE,] #suppr si pas de TC connu
-
-#ville_tc_abs <- read.csv2("ville_tc_abs.csv", sep = ";", dec =",")
-#ville_tc_abs$CDCOM_TCABS <- as.factor(substr(as.character(ville_tc_abs$CDCOM_TCABS),2,6)) #encore des code communes sans TC
-#DFTZ <- merge(DFTZ, ville_tc_abs,all.x=TRUE, by.x=c("I_CD_POST_SIEGE"), by.y=c("CDCOM_TCABS"))
-#DFTZ$num_TC <- ifelse(is.na()==TRUE,,)
-
-#DFTZ_greffe <- DFTZ[,c("I_CD_POST_SIEGE","num_A_PCL_TC","num_TC_2009","TC")]
-#DFTZ_greffe <- unique(DFTZ_greffe)
-#write.table(DFTZ_greffe, file = "DFTZ_greffe.csv", row.names = FALSE, sep=";", dec=",")
 #### Fusion région
 dpts <- read.csv2("depts2008.csv", sep = ";", dec =",")
 dpts$DPT <- as.factor(substr(as.character(dpts$DPT),2,3))
