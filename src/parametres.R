@@ -7,6 +7,6 @@ library("here")
 library("did")
 library("readstata13")
 
-### donnees de stata
+### donnees de stata ---
 dftz <- read.dta13("donnees/DFTZ_modele2.dta")
 
