@@ -6,6 +6,7 @@ library("tidyverse")
 library("here")
 library("did")
 library("readstata13")
+library("DT")
 
 ### donnees de stata ---
 dftz <- read.dta13("donnees/DFTZ_modele2.dta")
