@@ -1,9 +1,16 @@
+library("tidyverse")
+library("here")
+library("did")
+library("readstata13")
+library("DT")
+library("lubridate")
+
 DFTZ_EXP <- read.csv2("donnees/DFTZ_EXP.csv", sep = ";", dec=".", na=".")
 #extraction SIREN
 #DFTZ_SIREN <- DFTZ_EXP %>% select(I_SIREN) %>% unique() #a vérifier
 #write.table(DFTZ_SIREN, file = "DFTZ_SIREN.csv", row.names = FALSE, sep=";", dec=".", na=".")
 #S_TC <- DFTZ_EXP %>% select(S_TC) %>% unique() %>% str_replace_all(DFTZ_EXP$S_TC, c("ST "="SAINT ", "STE "="SAINTE "))
-LIEN_TC_MJ <- read.csv2("donnees/LIEN_TC_MJ.csv", sep = ";", dec=".", na=".")
+LIEN_TC_MJ <- read.csv2("donnees/LIEN_TC_MJ.csv", sep = ";", dec=".", na=".", encoding = "UTF-8")
 DFTZ_EXP <- merge(DFTZ_EXP, LIEN_TC_MJ[c("S_TC","i_elst")], all.x=T, by=("S_TC")) %>% rename(i_elst_DFTZ=i_elst)
 
 ### Modif DFTZ -----
@@ -14,16 +21,17 @@ DFTZ_EXP$ANNEE <- as.factor(substr(as.character(DFTZ_EXP$DATE_OUVERTURE),1,4))
 DFTZ_EXP$ANNEEMOIS <- as.factor(substr(as.character(DFTZ_EXP$DATE_OUVERTURE),1,6))
 DFTZ_EXP$PROC <- as.factor(ifelse(DFTZ_EXP$RJ==1,"R", ifelse(DFTZ_EXP$SAUV==1, "S", ifelse(DFTZ_EXP$LJ==1, "L", NA))))
 DFTZ_EXP$FJ_2 <- substr(as.character(DFTZ_EXP$I_FJ),1,2)
+DFTZ_EXP$NAF4 <- substr(DFTZ_EXP$I_CD_NAF,1,4)
 ## Création DFTZ2 (version simplifiée) -----
 ### selectionne que société commerciales  -----
 DFTZ2 <- DFTZ_EXP %>% filter(substr(DFTZ_EXP$FJ_2,1,1) %in% c('5','6')) 
 ### selectionne que activités pertinentes  -----
 DFTZ2 <- DFTZ2[which(DFTZ2$DNAF==1),]
 ## Adapte format DATE
-DFTZ2 <- DFTZ2[,c("I_SIREN","S_TC","i_elst_DFTZ","PROC",'FJ_2',"I_CD_NAF","DATE_OUVERTURE","DATE_PLAN","DATE_LIQUID")] %>% 
- mutate_at(.vars = c("DATE_OUVERTURE", "DATE_LIQUID"), list(~substring(.,1,8)))
+DFTZ2 <- DFTZ2[,c("I_SIREN","S_TC","i_elst_DFTZ","PROC",'FJ_2',"NAF4","DATE_OUVERTURE","DATE_PLAN","DATE_LIQUID")] %>% 
+ mutate_at(.vars = c("DATE_OUVERTURE", "DATE_LIQUID"), list(~substring(.,1,8))) 
 ## test appariement 
-appariement <- DFTZ2 %>%  group_by(DATE_OUVERTURE, S_TC, PROC, FJ_2,I_CD_NAF) %>% summarise(n = n()) %>% ungroup()
+appariement <- DFTZ2 %>%  group_by(DATE_OUVERTURE, S_TC, PROC, FJ_2,NAF4) %>% summarise(n = n()) %>% ungroup()
 summary(appariement$n)
 
 ##MODIF AC08_DFTZ ------
@@ -46,20 +54,29 @@ AC08_DFTZ <- AC08_DFTZ %>% mutate(#SIREN =as.integer(SIREN),
     CATJU =='0L' ~ '54',
     CATJU =='0M' ~ '62',
     CATJU =='0N' ~ '56',
-    TRUE ~ CATJU))
-### que avec SIREN et select variables ------
-AC08_SS0 <- AC08_DFTZ %>% filter(SIREN!=0) %>% select(I_SIREN, I_ELST,TYPROCOUV, TYPROCO,FJ_2_S, APE, DATE_OUV,DASAI_C,DAFIN_O_C,DAFIN_S_C,OSCA)
+    TRUE ~ CATJU),
+  DATE_OUV=if_else(is.na(DATE_OUV),DASAI_C,DATE_OUV))
+### que avec SIREN, et PCL et select variables ------
+AC08_SS0 <- AC08_DFTZ %>% 
+              filter(SIREN!=0) %>% 
+              filter(TYPROCOUV %in% c('L','M','R','S','Z') & TYPROCO %in% c('L','A','R','S')) %>% 
+                  select(I_SIREN, I_ELST,TYPROCOUV, TYPROCO,FJ_2_S, APE, DATE_OUV,DASAI_C,DAFIN_O_C,DAFIN_S_C,OSCA)
 ### que société commerciales ------
 #AC08_SS0 <- AC08_SS0 %>% filter(substr(AC08_SS0$FJ_2_S,1,1) %in% c('5','6')) 
 
-
-test1 <- merge(DFTZ2, AC08_SS0, all.x=T, by.x=("I_SIREN"), by.y=("I_SIREN"), incomparables)
+### test Fusion -------
+test1 <- merge(DFTZ2, AC08_SS0, all.x=T, by.x=("I_SIREN"), by.y=("I_SIREN"))
 test2 <- merge(AC08_SS0,DFTZ2 , all.x=T,by.x=("I_SIREN"), by.y=("I_SIREN"),  incomparables)
 test3 <- test1[is.na(test1$OSCA),]
-appariement3 <- test3 %>%  group_by(DATE_OUVERTURE, S_TC, PROC, FJ_2,I_CD_NAF) %>% summarise(n = n()) %>% ungroup()
+appariement3 <- test3 %>%  group_by(DATE_OUVERTURE, S_TC, PROC, FJ_2,NAF4) %>% summarise(n = n()) %>% ungroup()
 summary(appariement3$n)
-test5 <- test1[!is.na(test1$OSCA),]
-appariement5 <- test5 %>%  group_by(DATE_OUVERTURE, I_ELST, PROC, FJ_2,I_CD_NAF) %>% summarise(n = n()) %>% ungroup()
+test5 <- test1[!is.na(test1$OSCA),] %>% 
+  mutate(match=ifelse(DATE_OUVERTURE==DATE_OUV,1,0)) %>% 
+  add_count(I_SIREN) %>% 
+    mutate_if(substr(.,1,5)=='DATE_',dmy(.))
+  
+
+appariement5 <- test5 %>%  group_by(DATE_OUVERTURE, I_ELST, PROC, FJ_2,NAF4) %>% summarise(n = n()) %>% ungroup()
 summary(appariement5$n)
 
 summary(test3)
@@ -83,7 +100,8 @@ test3 <- test1[is.na(test1$OSCA),]
 
 # AC08 ----
 AC08 <- read.csv2("donnees/AC08.csv", sep = ";", dec=".", na=".")
-AC08 <- AC08 %>% mutate(SIREN =as.integer(SIREN), 
+AC08 <- AC08 %>% mutate(SIREN =as.integer(SIREN),
+  DATE_OUV=if_else(is.na(DATE_OUV),DASAI_C,DATE_OUV), 
   ANNEE_OUV=substr(DATE_OUV,1,4),
   FJ_2_S = case_when(
     CATJU =='0A' ~ '13',
@@ -104,8 +122,10 @@ AC08 <- AC08 %>% mutate(SIREN =as.integer(SIREN),
 ### na Fn pour transformer en NA ----
 na <- . %>% na_if("") %>% na_if("00") %>% na_if(., "0000")
 ### modif table ----
+# garder que PCL
 AC08_SSSIR <- AC08 %>% filter(SIREN==0|is.na(SIREN)) %>% 
     select(SIREN, I_ELST,TYPROCOUV, TYPROCO,FJ_2_S, APE, DATE_OUV,DASAI_C,DAFIN_O_C,DAFIN_S_C,OSCA) %>% 
+      filter(TYPROCOUV %in% c('L','M','R','S','Z') & TYPROCO %in% c('L','A','R','S')) %>% 
         mutate_if(is.character, na) %>% 
         mutate_at(.vars = c("TYPROCOUV", "TYPROCO","FJ_2_S","APE","OSCA"), list(~as.factor(.)))
 ## test appariement -----
