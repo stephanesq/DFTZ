@@ -1,14 +1,21 @@
+library("tidyverse")
+library("here")
+library("did")
+library("readstata13")
+library("DT")
+
 # chargement base ----
-DFTZ <- read.csv2("donnees/DFTZ_EXP.csv", sep = ";", dec=".", na=".")
+DFTZ_EXP <- read.csv2("donnees/DFTZ_EXP.csv", sep = ";", dec=".", na=".")
+AC08 <- read.csv2("donnees/AC08.csv", sep = ";", dec=".", na=".")
 ##################
 # préparation data ----
-DFTZ <- DFTZ[,c("I_SIREN","I_CD_POST_SIEGE","I_FJ","FJ_1","NAF2","NAF1","AGE_ENTP","TR_EFF_ENT","EFENCE","A_NBR_ETAB","I_ORIGINE","DATE_OUVERTURE","RJ","SAUV","LJ","DATE_PLAN","DATE_LIQUID","DATE_CONV","DATE_PLAN_CT","DATE_MORT","CD_MORT","DATE_PLAN_CESS","P_CESSION","DATE_CL_CT","CL_CESSION","FAILURE","AGE_FAILURE","AGEBILAN","BILAN_24M","S_DT_CLO_B0","S_EE_B0","S_FL_B0","EFF","TX_MA_GL","TX_VA","TX_MB_EXP","TX_DOB","RENT_B_K_EXP","RENT_N_K_EXP","CAP_GEN_CASH","RENTA_FI","SUR_FI","COUV_IMMO_FP","CRED_BK_COURANT_BFR","CP_VA","PDS_INT","VMC","DET_FOUR","CREA_CLI","DUR_FOUR","DUR_CLI","RENTA_ECO","RES_FIN","RES_EXCEP","PDS_MAS_SAL","SOLDE_COM","LIQUI","CAF","FR","BFR","TRESO_N","ENDET_BRUT","ENDET_NET","TX_ENDET_NET","TX_ENDET_BRUT","CT_ENDET","TX_RENTA_FI_KP","PDS_INT_REV_GLOB","PERS_RRP","PRET_RRP","COMPTES_ASSOCIES","CNAF","RES_HORS_EXP","RRP","STOCKS","CUR_AS_CUR_LI","TRESO_ACT","IMMO","A_PCL_TC")]
+DFTZ <- DFTZ_EXP[,c("I_SIREN","I_CD_POST_SIEGE","I_FJ","FJ_1","NAF2","NAF1","AGE_ENTP","TR_EFF_ENT","EFENCE","A_NBR_ETAB","I_ORIGINE","DATE_OUVERTURE","RJ","SAUV","LJ","DATE_PLAN","DATE_LIQUID","DATE_CONV","DATE_PLAN_CT","DATE_MORT","CD_MORT","DATE_PLAN_CESS","P_CESSION","DATE_CL_CT","CL_CESSION","FAILURE","AGE_FAILURE","AGEBILAN","BILAN_24M","S_DT_CLO_B0","S_EE_B0","S_FL_B0","EFF","TX_MA_GL","TX_VA","TX_MB_EXP","TX_DOB","RENT_B_K_EXP","RENT_N_K_EXP","CAP_GEN_CASH","RENTA_FI","SUR_FI","COUV_IMMO_FP","CRED_BK_COURANT_BFR","CP_VA","PDS_INT","VMC","DET_FOUR","CREA_CLI","DUR_FOUR","DUR_CLI","RENTA_ECO","RES_FIN","RES_EXCEP","PDS_MAS_SAL","SOLDE_COM","LIQUI","CAF","FR","BFR","TRESO_N","ENDET_BRUT","ENDET_NET","TX_ENDET_NET","TX_ENDET_BRUT","CT_ENDET","TX_RENTA_FI_KP","PDS_INT_REV_GLOB","PERS_RRP","PRET_RRP","COMPTES_ASSOCIES","CNAF","RES_HORS_EXP","RRP","STOCKS","CUR_AS_CUR_LI","TRESO_ACT","IMMO","A_PCL_TC")]
 DFTZ$PROC <- as.factor(ifelse(DFTZ$RJ==1,"RJ", ifelse(DFTZ$SAUV==1, "SAUV", "LJ")))
 DFTZ <- DFTZ[DFTZ$SAUV==0,] #on enlève sauvegarde
 DFTZ$PCL <- DFTZ$RJ + DFTZ$LJ
 
 ## Modif var INSEE ----
-# selectionne que NAF pertinentes
+# selectionne que NAF pertinentes et société commerciales
 DFTZ <- DFTZ[which(DFTZ$FJ_1==5|DFTZ$FJ_1==6),] #on conserve quesociétés commerciales (FJ 5 et 6)
 DFTZ$TR_EFF_ENT <- as.factor(DFTZ$TR_EFF_ENT)
 DFTZ$FJ_2 <- as.factor(substr(as.character(DFTZ$I_FJ),1,2))
