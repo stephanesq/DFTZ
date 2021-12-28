@@ -28,11 +28,15 @@ DFTZ2 <- DFTZ_EXP %>% filter(substr(DFTZ_EXP$FJ_2,1,1) %in% c('5','6'))
 ### selectionne que activités pertinentes  -----
 DFTZ2 <- DFTZ2[which(DFTZ2$DNAF==1),]
 ## Adapte format DATE
-DFTZ2 <- DFTZ2[,c("I_SIREN","S_TC","i_elst_DFTZ","PROC",'FJ_2',"NAF4","DATE_OUVERTURE","DATE_PLAN","DATE_LIQUID")] %>% 
+DFTZ2 <- DFTZ2[,c("I_SIREN","S_TC","i_elst_DFTZ","PROC",'FJ_2',"NAF4","DATE_OUVERTURE","ANNEE","DATE_PLAN","DATE_LIQUID")] %>% 
  mutate_at(.vars = c("DATE_OUVERTURE", "DATE_LIQUID"), list(~substring(.,1,8))) 
 ## test appariement 
-appariement <- DFTZ2 %>%  group_by(DATE_OUVERTURE, S_TC, PROC, FJ_2,NAF4) %>% summarise(n = n()) %>% ungroup()
+appariement <- DFTZ2 %>%  group_by(DATE_OUVERTURE,ANNEE, S_TC, PROC, FJ_2,NAF4) %>% summarise(n = n()) %>% ungroup()
 summary(appariement$n)
+pb_doublon <- appariement[(appariement$n>1),]
+summary(pb_doublon$ANNEE)
+doublon_SIREN <- DFTZ2 %>%  group_by(I_SIREN) %>% summarise(n = n()) %>% ungroup()
+summary(doublon_SIREN$n)
 
 ##MODIF AC08_DFTZ ------
 #AC08 <- read.csv2("donnees/AC08.csv", sep = ";", dec=".", na=".")
@@ -64,18 +68,40 @@ AC08_SS0 <- AC08_DFTZ %>%
 ### que société commerciales ------
 #AC08_SS0 <- AC08_SS0 %>% filter(substr(AC08_SS0$FJ_2_S,1,1) %in% c('5','6')) 
 
-### test Fusion -------
+### test Fusion : apport d'info à DFTZ, tests appariement selon date, type PCL -------
 test1 <- merge(DFTZ2, AC08_SS0, all.x=T, by.x=("I_SIREN"), by.y=("I_SIREN"))
-test2 <- merge(AC08_SS0,DFTZ2 , all.x=T,by.x=("I_SIREN"), by.y=("I_SIREN"),  incomparables)
+test1 <- test1 %>% select(I_SIREN, PROC, TYPROCOUV, TYPROCO, DATE_OUVERTURE, DATE_OUV,DASAI_C, OSCA)
+#date
+test1$date_apparie=if_else(test1$DATE_OUVERTURE==test1$DATE_OUV,1,0) 
+summary(as.factor(test1$date_apparie)) 
+#type pcl/PROCO
+test1$pcl_apparie=if_else(test1$PROC==test1$TYPROCO,1,0) 
+summary(as.factor(test1$pcl_apparie)) 
+#type pcl/TYPROCOUV
+test1$pcl_apparie2=if_else(test1$PROC==test1$TYPROCOUV,1,0) 
+summary(as.factor(test1$pcl_apparie2)) 
+test1$apparie=if_else(is.na(test1$OSCA),0,1)
+summary(as.factor(test1$apparie))
+
+tab <- select (test1, apparie, ANNEE) %>%
+  droplevels () %>% 
+  table () 
+as.data.frame (tab) %>% 
+  spread (key = ANNEE, value = Freq) %>% 
+  datatable (caption = "VENTILATION DES APPARIES et NON APPARIES par ANNEE d'Ouverture de PCL")
+
+# Regarde parmi les non apparies ceux qui pourront poser problème :
 test3 <- test1[is.na(test1$OSCA),]
-appariement3 <- test3 %>%  group_by(DATE_OUVERTURE, S_TC, PROC, FJ_2,NAF4) %>% summarise(n = n()) %>% ungroup()
-summary(appariement3$n)
+appariement <- test3 %>%  group_by(DATE_OUVERTURE, ANNEE,S_TC, PROC, FJ_2,NAF4) %>% summarise(n = n()) %>% ungroup()
+summary(appariement$n)
+pb_doublon <- appariement[(appariement$n>1),]
+summary(pb_doublon$ANNEE)
+
+
 test5 <- test1[!is.na(test1$OSCA),] %>% 
   mutate(match=ifelse(DATE_OUVERTURE==DATE_OUV,1,0)) %>% 
   add_count(I_SIREN) %>% 
-    mutate_if(substr(.,1,5)=='DATE_',dmy(.))
-  
-
+  mutate_if(substr(.,1,5)=='DATE_',dmy(.))
 appariement5 <- test5 %>%  group_by(DATE_OUVERTURE, I_ELST, PROC, FJ_2,NAF4) %>% summarise(n = n()) %>% ungroup()
 summary(appariement5$n)
 
@@ -86,6 +112,13 @@ summary(as.factor(test3$ANNEE))
 summary(as.factor(test3$I_FJ))
 summary(as.factor(test3$S_TC))
 summary(as.factor(test3$NAF1))
+
+test2 <- merge(AC08_SS0,DFTZ2 , all.x=T,by.x=("I_SIREN"), by.y=("I_SIREN"),  incomparables)
+
+
+  
+
+
 
 test4 <- test2[is.na(test2$DATE_OUVERTURE),]
 summary(as.factor(test4$TYPROCOUV))
